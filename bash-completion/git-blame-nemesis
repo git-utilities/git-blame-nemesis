@@ -1,0 +1,41 @@
+# git-blame-nemesis completion
+
+_git_blame_nemesis() {
+    local cur prev words cword split
+    _init_completion || return
+
+    # default completion if parameter looks like a path
+    if [[ "${cur}" == @(*/|[.~])* ]]; then
+        _filedir
+        return
+    fi
+
+    case "${prev}" in
+        --help|--license|--verbose|--version)
+            return
+        ;;
+        --author)
+            local _all_authors="$(git log --pretty='%an' | sort --unique | tr $'\n' ' ')"
+            COMPREPLY=( $( compgen -W '${_all_authors:-someone}' -- ${cur} ) )
+            return
+        ;;
+        --)
+            if source "/usr/share/bash-completion/completions/git"; then
+              __gitcomp_builtin 'blame'
+            else
+              _filedir
+            fi
+            return
+        ;;
+    esac
+
+    # Parse help for any un-matched parameters
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "${1}" )' -- "${cur}" ) )
+        [[ ${COMPREPLY} == *= ]] && compopt -o nospace
+        return
+    fi
+} &&
+complete -F _git_blame_nemesis git-blame-nemesis
+
+# ex: filetype=bash
