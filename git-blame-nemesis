@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+
+set -eE -o functrace
+
+## Optional, but recommended to find true directory this script resides in
+__SOURCE__="${BASH_SOURCE[0]}"
+while [[ -h "${__SOURCE__}" ]]; do
+    __SOURCE__="$(find "${__SOURCE__}" -type l -ls | sed -n 's@^.* -> \(.*\)@\1@p')"
+done
+__NAME__="${__SOURCE__##*/}"
+__DIR__="$(cd -P "$(dirname "${__SOURCE__}")" && pwd)"
+__AUTHOR__='S0AndS0'
+__DESCRIPTION__='Find and git blame all files modified by author'
+
+## Source module code within this script
+source "${__DIR__}/modules/trap-failure/failure.sh"
+
+trap 'failure "LINENO" "BASH_LINENO" "${BASH_COMMAND}" "${?}"' ERR
+
+##
+#
+__license__(){
+  local __AUTHOR__="${__AUTHOR__:-S0AndS0}"
+  local _year
+  _year="$(date +'%Y')"
+  cat <<EOF
+Copyright (C) ${_year} ${__AUTHOR__}
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+EOF
+}
+
+##
+#
+__version__() {
+  local _version_number
+  _version_number="$(git tag --list v* | tail -n1)"
+  _version_number="${_version_number:-v0.1.0}"
+  _version_number="${_version_number//[^0-9.]/}"
+
+  printf '%s - %s\n' "${__NAME__}" "${_version_number}"
+  __license__ "${__AUTHOR__}"
+  printf '\nWritten by %s\n' "${__AUTHOR__}"
+}
+
+##
+#
+__usage__() {
+  local _message="${1}"
+  cat <<EOF
+${__DESCRIPTION__}
+
+
+Usage: ${__NAME__} [OPTIONS]...
+
+
+Options:
+--help
+    Prints this message and exits
+
+--license
+    Prints copyright for this script and exits
+
+--verbose
+    Prints messages about actions
+
+--version
+    Prints version for this script and exits
+
+--author "someone"
+    Commit author to blame
+
+-- [OPTIONS]
+    Arguments to pass through to git blame command
+
+    Utilize following commands for relevant documentation;
+
+      - git help blame
+
+      - man git-blame
+
+
+Examples:
+    ${__NAME__} --verbose --author "${__AUTHOR__}"
+EOF
+
+  if (( ${#_message} )); then
+    printf >&2 'Error: %s\n' "${_message}"
+    return 1
+  fi
+}
+
+##
+# Parse CLI parameters
+while (( ${#@} )); do
+  case "${1}" in
+    --)
+      shift 1
+      _pass_through_arguments=("${@}")
+      break
+    ;;
+    --version)
+      __version__
+      exit 0
+    ;;
+    --license)
+      __license__
+      exit 0
+    ;;
+    --help)
+      __usage__ ''
+      exit 0
+    ;;
+    --verbose)
+      _verbose=1
+      shift 1
+    ;;
+    --author)
+      _author="${2:?Undefined value for --author}"
+      shift 2
+    ;;
+  esac
+done
+
+##
+#
+git_log_hashes_by_author() {
+  local _author="${1:?Undefined author}"
+
+  git log --author="${_author}" \
+    --pretty='format:%h' \
+    --ignore-space-change
+}
+
+##
+#
+git_log_paths_by_author() {
+  local _author="${1:?Undefined author}"
+
+  git log "${_hash}" --author="${_author}" \
+    --pretty='format:' \
+    --oneline \
+    --name-only
+}
+
+##
+#
+git_is_tracking_hash_path() {
+  local _hash="${1:?Undefined hash}"
+  local _path="${2:?Undefined path}"
+
+  git show "${_hash}" "${_path}" 1>/dev/null 2>&1
+}
+
+##
+#
+git_blame_hash_path() {
+  local _hash="${1:?Undefined hash}"
+  local _path="${2:?Undefined path}"
+
+  local _git_opts=(
+    "${_pass_through_arguments[@]}"
+    "${_hash}"
+    "${_path}"
+  )
+
+  ## Note: this guard is required due to differences in behavior between
+  ##  interactive and non-interactive shell sessions
+  if ! git_is_tracking_hash_path "${_hash}" "${_path}"; then
+    if (( _verbose )); then
+      printf >&2 '[Skipped] git blame %s\n' "${_git_opts[*]}"
+    fi
+    return
+  fi
+
+  read -t 10 -r -p "[Enter] git blame ${_git_opts[*]} "
+  if [[ "${REPLY}" =~ ^(n|q) ]]; then
+    return 1
+  fi
+  git blame "${_git_opts[@]}"
+}
+
+##
+#
+while read -r -u 3 _hash; do
+  while read -r -u 4 _path; do
+    if ! git_blame_hash_path "${_hash}" "${_path}"; then
+      break 2
+    fi
+  done 4< <(git_log_paths_by_author "${_author}")
+done 3< <(git_log_hashes_by_author "${_author}")
+
