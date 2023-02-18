@@ -1,0 +1,13 @@
+## Development stuff
+dev
+
+## Git merge conflicts
+*.orig
+
+## Make script artifacts
+.config-make
+
+## Vim artifacts
+*.swp
+*.swo
+
