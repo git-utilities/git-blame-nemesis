@@ -4,7 +4,7 @@
 
 Find and git blame all files modified by author
 
-## [![Byte size of Git Blame Nemesis][badge__main__git_blame_nemesis__source_code]][git_blame_nemesis__main__source_code] [![Open Issues][badge__issues__git_blame_nemesis]][issues__git_blame_nemesis] [![Open Pull Requests][badge__pull_requests__git_blame_nemesis]][pull_requests__git_blame_nemesis] [![Latest commits][badge__commits__git_blame_nemesis__main]][commits__git_blame_nemesis__main]   [![GitHub Actions Build Status][badge__github_actions]][activity_log__github_actions] [![License][badge__license]][branch__current__license]
+## [![Byte size of Git Blame Nemesis][badge__main__git_blame_nemesis__source_code]][git_blame_nemesis__main__source_code] [![Open Issues][badge__issues__git_blame_nemesis]][issues__git_blame_nemesis] [![Open Pull Requests][badge__pull_requests__git_blame_nemesis]][pull_requests__git_blame_nemesis] [![Latest commits][badge__commits__git_blame_nemesis__main]][commits__git_blame_nemesis__main] [![License][badge__license]][branch__current__license]
 
 
 ---
